@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (uid: string) => {
+    if (!supabase) return;
     const { data: p } = await supabase.from('profiles').select('*').eq('id', uid).single();
     if (p) {
       setProfile(p);
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured) { setLoading(false); return; }
+    if (!isSupabaseConfigured || !supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) { setUser(session.user); loadProfile(session.user.id); }
       setLoading(false);
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, phone: string, role: 'traveler' | 'agency', agencyName?: string, whatsapp?: string): Promise<boolean> => {
-    if (!isSupabaseConfigured) { toast.error('Supabase no configurado'); return false; }
+    if (!isSupabaseConfigured || !supabase) { toast.error('Supabase no configurado'); return false; }
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error || !data.user) { toast.error(error?.message || 'Error al registrarse'); return false; }
     await supabase.from('profiles').insert({ id: data.user.id, email, full_name: fullName, phone, role });
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
-    if (!isSupabaseConfigured) { toast.error('Supabase no configurado'); return false; }
+    if (!isSupabaseConfigured || !supabase) { toast.error('Supabase no configurado'); return false; }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { toast.error(error.message); return false; }
     toast.success('Bienvenido de vuelta');
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null); setProfile(null); setAgency(null);
     toast.success('Sesión cerrada');

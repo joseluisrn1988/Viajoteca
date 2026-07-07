@@ -33,7 +33,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const fetchTrips = async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !supabase) return;
     setLoading(true);
     const { data } = await supabase.from('trips').select('*, agency:agencies(*)').eq('is_approved', true).eq('status', 'active').order('departure_date');
     if (data) setTrips(data as Trip[]);
@@ -41,7 +41,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchTripById = async (id: string): Promise<Trip | null> => {
-    if (!isSupabaseConfigured) return null;
+    if (!isSupabaseConfigured || !supabase) return null;
     const { data: trip } = await supabase.from('trips').select('*, agency:agencies(*)').eq('id', id).single();
     if (!trip) return null;
     const { data: items } = await supabase.from('itinerary_items').select('*').eq('trip_id', id).order('sort_order');
@@ -49,13 +49,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchAgencyTrips = async (agencyId: string): Promise<Trip[]> => {
-    if (!isSupabaseConfigured) return [];
+    if (!isSupabaseConfigured || !supabase) return [];
     const { data } = await supabase.from('trips').select('*').eq('agency_id', agencyId).order('departure_date', { ascending: false });
     return (data || []) as Trip[];
   };
 
   const createTrip = async (d: Omit<Trip, 'id' | 'created_at' | 'agency'>, items: ItineraryItem[]): Promise<Trip | null> => {
-    if (!isSupabaseConfigured) return null;
+    if (!isSupabaseConfigured || !supabase) return null;
     const { data, error } = await supabase.from('trips').insert(d).select().single();
     if (error || !data) { toast.error(error?.message || 'Error'); return null; }
     if (items.length > 0) {
@@ -67,7 +67,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const updateTrip = async (id: string, d: Partial<Trip>, items?: ItineraryItem[]): Promise<boolean> => {
-    if (!isSupabaseConfigured) return false;
+    if (!isSupabaseConfigured || !supabase) return false;
     const cleanD = { ...d };
     delete cleanD.agency; delete cleanD.itinerary_items;
     const { error } = await supabase.from('trips').update(cleanD).eq('id', id);
@@ -84,6 +84,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteTrip = async (id: string): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) return false;
     const { error } = await supabase.from('trips').delete().eq('id', id);
     if (error) { toast.error(error.message); return false; }
     toast.success('Viaje eliminado');
@@ -91,6 +92,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleSeat = async (tripId: string, seat: number): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) return false;
     const { data: trip } = await supabase.from('trips').select('blocked_seats').eq('id', tripId).single();
     if (!trip) return false;
     const bs: number[] = trip.blocked_seats || [];
@@ -101,9 +103,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const createBooking = async (b: Omit<Booking, 'id' | 'created_at' | 'trip'>): Promise<Booking | null> => {
+    if (!isSupabaseConfigured || !supabase) return null;
     const { data, error } = await supabase.from('bookings').insert(b).select().single();
     if (error || !data) { toast.error(error?.message || 'Error'); return null; }
-    // Block seats
     const { data: trip } = await supabase.from('trips').select('blocked_seats').eq('id', b.trip_id).single();
     if (trip) {
       const updated = Array.from(new Set([...(trip.blocked_seats || []), ...b.selected_seats]));
@@ -114,19 +116,21 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchUserBookings = async (uid: string): Promise<Booking[]> => {
+    if (!isSupabaseConfigured || !supabase) return [];
     const { data } = await supabase.from('bookings').select('*, trip:trips(*, agency:agencies(*))').eq('user_id', uid).order('created_at', { ascending: false });
     return (data || []) as Booking[];
   };
 
   const fetchTripBookings = async (tid: string): Promise<Booking[]> => {
+    if (!isSupabaseConfigured || !supabase) return [];
     const { data } = await supabase.from('bookings').select('*').eq('trip_id', tid).order('created_at', { ascending: false });
     return (data || []) as Booking[];
   };
 
   const createReview = async (r: Omit<Review, 'id' | 'created_at' | 'profile'>): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) return false;
     const { error } = await supabase.from('reviews').insert(r);
     if (error) { toast.error(error.message); return false; }
-    // Update agency average
     const { data: reviews } = await supabase.from('reviews').select('rating').eq('agency_id', r.agency_id);
     if (reviews && reviews.length > 0) {
       const avg = reviews.reduce((s, rv) => s + rv.rating, 0) / reviews.length;
@@ -137,11 +141,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchAgencyReviews = async (aid: string): Promise<Review[]> => {
+    if (!isSupabaseConfigured || !supabase) return [];
     const { data } = await supabase.from('reviews').select('*, profile:profiles(full_name)').eq('agency_id', aid).order('created_at', { ascending: false });
     return (data || []) as Review[];
   };
 
   const adminFetchAll = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
     setLoading(true);
     const { data: t } = await supabase.from('trips').select('*, agency:agencies(*)').order('created_at', { ascending: false });
     if (t) setTrips(t as Trip[]);
@@ -151,6 +157,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const adminVerifyAgency = async (id: string, v: boolean): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) return false;
     const { error } = await supabase.from('agencies').update({ is_verified: v }).eq('id', id);
     if (error) { toast.error(error.message); return false; }
     toast.success(v ? 'Agencia verificada' : 'Verificación removida');
@@ -158,6 +165,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   };
 
   const adminApproveTrip = async (id: string, a: boolean): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) return false;
     const { error } = await supabase.from('trips').update({ is_approved: a }).eq('id', id);
     if (error) { toast.error(error.message); return false; }
     toast.success(a ? 'Viaje aprobado' : 'Viaje rechazado');

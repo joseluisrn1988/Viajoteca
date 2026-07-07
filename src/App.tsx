@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { TripProvider } from './contexts/TripContext';
@@ -15,7 +15,7 @@ import AdminPanel from './components/admin/AdminPanel';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <TripProvider>
           <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 antialiased font-sans">
@@ -36,6 +36,6 @@ export default function App() {
           </div>
         </TripProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
