@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Trip, ItineraryItem } from '../types/travel';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { Trip, ItineraryItem } from '../../types/travel';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Plus,
   Edit2,
