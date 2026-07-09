@@ -105,10 +105,15 @@ export default function AdminPanel({
     setIsLoading(true);
     try {
       // 1. Actualizar en Supabase
-      const { error } = await supabase
-        .from('trips')
-        .update({ is_approved: true })
-        .eq('id', tripId);
+if (!supabase) {
+  alert('❌ Supabase no está configurado');
+  return;
+}
+
+const { error } = await supabase
+  .from('trips')
+  .update({ is_approved: true })
+  .eq('id', tripId);
 
       if (error) throw error;
 
