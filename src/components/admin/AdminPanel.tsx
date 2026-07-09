@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Trip, ItineraryItem } from '../../types';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useState } from 'react';
+import { Trip, ItineraryItem } from '../types/travel';
 import {
   Plus,
   Edit2,
@@ -15,11 +14,8 @@ import {
   Clock,
   ShieldCheck,
   CheckCircle,
-  FileSpreadsheet,
-  Check,
-  XCircle
+  FileSpreadsheet
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 interface AdminPanelProps {
   trips: Trip[];
@@ -30,17 +26,15 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({
-  trips: initialTrips,
+  trips,
   onAddTrip,
   onUpdateTrip,
   onDeleteTrip,
   onResetToDefault,
 }: AdminPanelProps) {
-  const [trips, setTrips] = useState<Trip[]>(initialTrips);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsIsFormOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [activeTab, setActiveTab] = useState<'trips' | 'stats' | 'pending'>('trips');
-  const [pendingTrips, setPendingTrips] = useState<Trip[]>([]);
+  const [activeTab, setActiveTab] = useState<'trips' | 'stats'>('trips');
 
   // Form States
   const [formTitle, setFormTitle] = useState('');
@@ -78,87 +72,13 @@ export default function AdminPanel({
 
   // Interactive seat blocking mode
   const [selectedTripForSeats, setSelectedTripForSeats] = useState<Trip | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Sync trips when props change
-  useEffect(() => {
-    setTrips(initialTrips);
-    const pending = initialTrips.filter(t => t.is_approved === false);
-    setPendingTrips(pending);
-  }, [initialTrips]);
 
   // Stats calculation
   const totalRevenue = trips.reduce((acc, t) => {
-    return acc + (t.blockedSeats?.length || 0) * t.price;
+    return acc + (t.blockedSeats.length * t.price);
   }, 0);
-  const totalBookedSeats = trips.reduce((acc, t) => acc + (t.blockedSeats?.length || 0), 0);
-  const totalCapacity = trips.reduce((acc, t) => acc + (t.totalSeats || 0), 0);
-
-  // ✅ FUNCIÓN PARA APROBAR VIAJES
-  const handleApproveTrip = async (tripId: string) => {
-    if (!isSupabaseConfigured || !supabase) {
-      toast.error('❌ Supabase no está configurado');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase!
-        .from('trips')
-        .update({ is_approved: true })
-        .eq('id', tripId);
-
-      if (error) throw error;
-
-      const updatedTrips = trips.map(trip =>
-        trip.id === tripId ? { ...trip, is_approved: true } : trip
-      );
-      setTrips(updatedTrips);
-      setPendingTrips(prev => prev.filter(t => t.id !== tripId));
-
-      const approvedTrip = trips.find(t => t.id === tripId);
-      if (approvedTrip) {
-        onUpdateTrip({ ...approvedTrip, is_approved: true });
-      }
-
-      toast.success('✅ Viaje aprobado y ahora es visible para los viajeros');
-    } catch (error) {
-      console.error('Error al aprobar:', error);
-      toast.error('❌ Error al aprobar el viaje. Revisa la consola.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ✅ FUNCIÓN PARA RECHAZAR VIAJES
-  const handleRejectTrip = async (tripId: string) => {
-    if (!isSupabaseConfigured || !supabase) {
-      toast.error('❌ Supabase no está configurado');
-      return;
-    }
-
-    if (!confirm('¿Estás seguro de rechazar este viaje? La agencia será notificada.')) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase!
-        .from('trips')
-        .update({ status: 'rejected' })
-        .eq('id', tripId);
-
-      if (error) throw error;
-
-      setPendingTrips(prev => prev.filter(t => t.id !== tripId));
-      toast.success('🗑️ Viaje rechazado');
-    } catch (error) {
-      console.error('Error al rechazar:', error);
-      toast.error('❌ Error al rechazar el viaje');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const totalBookedSeats = trips.reduce((acc, t) => acc + t.blockedSeats.length, 0);
+  const totalCapacity = trips.reduce((acc, t) => acc + t.totalSeats, 0);
 
   const resetForm = () => {
     setFormTitle('');
@@ -185,7 +105,7 @@ export default function AdminPanel({
 
   const handleOpenAddForm = () => {
     resetForm();
-    setIsFormOpen(true);
+    setIsIsFormOpen(true);
   };
 
   const handleOpenEditForm = (trip: Trip) => {
@@ -200,21 +120,21 @@ export default function AdminPanel({
     setFormImages(trip.images.join(', '));
     setFormCategory(trip.category);
     setFormDurationText(trip.durationText);
-    setFormAddress(trip.departureLocation?.address || '');
-    setFormInstructions(trip.departureLocation?.instructions || '');
-    setFormEmbedUrl(trip.departureLocation?.embedUrl || '');
+    setFormAddress(trip.departureLocation.address);
+    setFormInstructions(trip.departureLocation.instructions);
+    setFormEmbedUrl(trip.departureLocation.embedUrl || '');
     setFormWhatsIncluded(trip.whatsIncluded.join('\n'));
     setFormWhatsNotIncluded(trip.whatsNotIncluded.join('\n'));
-    setFormItinerary(trip.itinerary || []);
-    setFormAgencyName(trip.agency?.name || 'Agencia Local');
-    setFormAgencyLogo(trip.agency?.logo || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=150&h=150&q=80');
-    setFormAgencyPhone(trip.agency?.phone || '525512345678');
-    setIsFormOpen(true);
+    setFormItinerary(trip.itinerary);
+    setFormAgencyName(trip.agency.name);
+    setFormAgencyLogo(trip.agency.logo);
+    setFormAgencyPhone(trip.agency.phone);
+    setIsIsFormOpen(true);
   };
 
   const handleAddItineraryItem = () => {
     if (!itTime || !itTitle) {
-      toast.error('La hora/día y el título del itinerario son obligatorios.');
+      alert('La hora/día y el título del itinerario son obligatorios.');
       return;
     }
     setFormItinerary([...formItinerary, { timeOrDay: itTime, title: itTitle, description: itDesc }]);
@@ -230,13 +150,14 @@ export default function AdminPanel({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Parse images
     const imageList = formImages
       ? formImages.split(',').map((img) => img.trim())
       : ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'];
 
-    // 🔧 CORRECCIÓN: Aseguramos que agency cumpla con la interfaz Agency
     const newTrip: Trip = {
       id: editingTrip ? editingTrip.id : `trip-${Date.now()}`,
+      agencyId: editingTrip ? editingTrip.agencyId : `agency-${Date.now()}`,
       title: formTitle,
       description: formDescription,
       departureCity: formDepartureCity,
@@ -250,7 +171,7 @@ export default function AdminPanel({
       durationText: formDurationText,
       departureLocation: {
         address: formAddress,
-        coordinates: { lat: 19.43, lng: -99.13 },
+        coordinates: { lat: 19.43, lng: -99.13 }, // default coordinates
         instructions: formInstructions,
         embedUrl: formEmbedUrl || undefined,
       },
@@ -258,31 +179,25 @@ export default function AdminPanel({
       whatsNotIncluded: formWhatsNotIncluded.split('\n').filter((item) => item.trim() !== ''),
       itinerary: formItinerary,
       agency: {
-        id: editingTrip?.agency?.id || `agency-${Date.now()}`,  // ← AÑADIDO
         name: formAgencyName,
         logo: formAgencyLogo,
         rating: 4.9,
         totalTrips: 10,
         isVerified: true,
         phone: formAgencyPhone,
-        reviews: editingTrip?.agency?.reviews || [],            // ← AÑADIDO
       },
       totalSeats: editingTrip ? editingTrip.totalSeats : 40,
       blockedSeats: editingTrip ? editingTrip.blockedSeats : [],
       whatsappNumber: formAgencyPhone,
-      is_approved: editingTrip ? editingTrip.is_approved : false,
-      status: 'active',
     };
 
     if (editingTrip) {
       onUpdateTrip(newTrip);
-      toast.success('✅ Viaje actualizado correctamente');
     } else {
       onAddTrip(newTrip);
-      toast.success('✅ Viaje creado. Pendiente de aprobación.');
     }
 
-    setIsFormOpen(false);
+    setIsIsFormOpen(false);
     resetForm();
   };
 
@@ -290,7 +205,7 @@ export default function AdminPanel({
     const trip = trips.find((t) => t.id === tripId);
     if (!trip) return;
 
-    let updatedBlocked = [...(trip.blockedSeats || [])];
+    let updatedBlocked = [...trip.blockedSeats];
     if (updatedBlocked.includes(seatNumber)) {
       updatedBlocked = updatedBlocked.filter((s) => s !== seatNumber);
     } else {
@@ -299,26 +214,23 @@ export default function AdminPanel({
 
     const updatedTrip = { ...trip, blockedSeats: updatedBlocked };
     onUpdateTrip(updatedTrip);
-    setTrips(prev => prev.map(t => t.id === tripId ? updatedTrip : t));
     
+    // update localized modal state
     if (selectedTripForSeats?.id === tripId) {
       setSelectedTripForSeats(updatedTrip);
     }
   };
 
-  // ============================================
-  // JSX RENDER (completo)
-  // ============================================
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-6 gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            🛡️ Panel de Administración
+            🛡️ Panel de Administración Curada
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Gestiona viajes, aprueba publicaciones de agencias y administra la plataforma.
+            Gestiona de forma centralizada el catálogo de viajes. Publica tours de agencias locales y administra lugares vendidos.
           </p>
         </div>
 
@@ -352,21 +264,6 @@ export default function AdminPanel({
           Todos los viajes ({trips.length})
         </button>
         <button
-          onClick={() => setActiveTab('pending')}
-          className={`border-b-2 px-4 py-3.5 text-sm font-bold transition-all relative ${
-            activeTab === 'pending'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Pendientes de aprobar
-          {pendingTrips.length > 0 && (
-            <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-              {pendingTrips.length}
-            </span>
-          )}
-        </button>
-        <button
           onClick={() => setActiveTab('stats')}
           className={`border-b-2 px-4 py-3.5 text-sm font-bold transition-all ${
             activeTab === 'stats'
@@ -378,65 +275,6 @@ export default function AdminPanel({
         </button>
       </div>
 
-      {/* PENDING TRIPS VIEW */}
-      {activeTab === 'pending' && (
-        <div className="mt-8 space-y-6">
-          <h2 className="text-lg font-bold text-slate-900">✋ Viajes pendientes de aprobación</h2>
-          {pendingTrips.length === 0 ? (
-            <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center">
-              <CheckCircle className="mx-auto h-12 w-12 text-emerald-500" />
-              <h3 className="mt-4 text-lg font-bold text-slate-900">¡Todo aprobado!</h3>
-              <p className="text-sm text-slate-500">No hay viajes pendientes de revisión.</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {pendingTrips.map((trip) => (
-                <div key={trip.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-bold text-slate-900 line-clamp-1">{trip.title}</h4>
-                      <p className="text-xs text-slate-500">Agencia: {trip.agency?.name || 'Desconocida'}</p>
-                    </div>
-                    <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
-                      Pendiente
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {trip.departureCity} → {trip.destination}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {new Date(trip.departureDate).toLocaleDateString('es-MX')}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-                    ${trip.price.toLocaleString('es-MX')} MXN
-                  </div>
-                  <div className="flex gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => handleApproveTrip(trip.id)}
-                      disabled={isLoading}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      <Check className="h-4 w-4" />
-                      {isLoading ? 'Procesando...' : 'Aprobar'}
-                    </button>
-                    <button
-                      onClick={() => handleRejectTrip(trip.id)}
-                      disabled={isLoading}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Rechazar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* STATS VIEW */}
       {activeTab === 'stats' && (
         <div className="mt-8 space-y-8">
@@ -446,7 +284,7 @@ export default function AdminPanel({
                 <DollarSign className="h-7 w-7" />
               </div>
               <div>
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Ventas Totales</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Ventas de Confianza Totales</span>
                 <strong className="mt-1 block text-2xl font-black text-slate-900">${totalRevenue.toLocaleString('es-MX')} MXN</strong>
               </div>
             </div>
@@ -469,12 +307,13 @@ export default function AdminPanel({
                 <Compass className="h-7 w-7" />
               </div>
               <div>
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Tours Activos</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Tours Curados Activos</span>
                 <strong className="mt-1 block text-2xl font-black text-slate-900">{trips.length} destinos</strong>
               </div>
             </div>
           </div>
 
+          {/* Mini-table of detailed passenger tracking */}
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -501,30 +340,20 @@ export default function AdminPanel({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {trips.map((t) => {
-                    const rev = (t.blockedSeats?.length || 0) * t.price;
-                    const pct = t.totalSeats > 0 ? Math.round(((t.blockedSeats?.length || 0) / t.totalSeats) * 100) : 0;
+                    const rev = t.blockedSeats.length * t.price;
+                    const pct = Math.round((t.blockedSeats.length / t.totalSeats) * 100);
                     return (
                       <tr key={t.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-3.5 font-bold text-slate-800">{t.title}</td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-600">{t.agency?.name || 'N/A'}</td>
+                        <td className="px-4 py-3.5 font-semibold text-slate-600">{t.agency.name}</td>
                         <td className="px-4 py-3.5 text-slate-700">
-                          {t.blockedSeats?.length || 0} / {t.totalSeats} asientos ({pct}%)
+                          {t.blockedSeats.length} / {t.totalSeats} asientos ({pct}%)
                         </td>
                         <td className="px-4 py-3.5 font-mono">${t.price} MXN</td>
                         <td className="px-4 py-3.5 font-bold text-emerald-600 font-mono">${rev.toLocaleString('es-MX')} MXN</td>
                         <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            t.is_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                          }`}>
-                            {t.is_approved ? (
-                              <>
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Aprobado
-                              </>
-                            ) : (
-                              <>
-                                <Clock className="h-3.5 w-3.5 text-amber-500" /> Pendiente
-                              </>
-                            )}
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Activo
                           </span>
                         </td>
                       </tr>
@@ -540,6 +369,7 @@ export default function AdminPanel({
       {/* TRIPS MANAGEMENT TABLE */}
       {activeTab === 'trips' && (
         <div className="mt-8 space-y-6">
+          {/* Main Grid table */}
           <div className="rounded-3xl border border-slate-150 bg-white overflow-hidden shadow-sm">
             <table className="w-full text-left text-sm text-slate-500">
               <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-150">
@@ -548,28 +378,29 @@ export default function AdminPanel({
                   <th className="px-6 py-4">Salida & Fechas</th>
                   <th className="px-6 py-4">Precio</th>
                   <th className="px-6 py-4">Asientos Vendidos / Total</th>
-                  <th className="px-6 py-4">Estado</th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {trips.map((t) => {
-                  const pct = t.totalSeats > 0 ? Math.round(((t.blockedSeats?.length || 0) / t.totalSeats) * 100) : 0;
+                  const pct = Math.round((t.blockedSeats.length / t.totalSeats) * 100);
                   return (
                     <tr key={t.id} className="hover:bg-slate-50/40">
+                      {/* Trip Info */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <img src={t.images?.[0] || 'https://via.placeholder.com/50'} alt="" className="h-12 w-12 rounded-lg object-cover bg-slate-100 shrink-0" />
+                          <img src={t.images[0]} alt="" className="h-12 w-12 rounded-lg object-cover bg-slate-100 shrink-0" />
                           <div>
                             <h4 className="font-extrabold text-slate-900 text-sm line-clamp-1">{t.title}</h4>
                             <span className="inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 mt-1">
                               {t.category}
                             </span>
-                            <span className="text-[11px] text-slate-400 ml-2 font-medium">Operador: {t.agency?.name || 'N/A'}</span>
+                            <span className="text-[11px] text-slate-400 ml-2 font-medium">Operador: {t.agency.name}</span>
                           </div>
                         </div>
                       </td>
 
+                      {/* Departure */}
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-bold">
@@ -583,14 +414,16 @@ export default function AdminPanel({
                         </div>
                       </td>
 
+                      {/* Price */}
                       <td className="px-6 py-4 font-bold text-slate-900 text-sm">
                         ${t.price.toLocaleString('es-MX')} <span className="text-[10px] font-semibold text-slate-400">MXN</span>
                       </td>
 
+                      {/* Seats indicator */}
                       <td className="px-6 py-4">
                         <div className="space-y-1 max-w-[120px]">
                           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                            <span>{t.blockedSeats?.length || 0} / {t.totalSeats}</span>
+                            <span>{t.blockedSeats.length} / {t.totalSeats}</span>
                             <span>{pct}%</span>
                           </div>
                           <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -605,34 +438,9 @@ export default function AdminPanel({
                         </div>
                       </td>
 
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          t.is_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {t.is_approved ? (
-                            <>
-                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Aprobado
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="h-3.5 w-3.5 text-amber-500" /> Pendiente
-                            </>
-                          )}
-                        </span>
-                      </td>
-
+                      {/* Actions */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {!t.is_approved && (
-                            <button
-                              onClick={() => handleApproveTrip(t.id)}
-                              disabled={isLoading}
-                              className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
-                              title="Aprobar viaje"
-                            >
-                              <Check className="h-4.5 w-4.5" />
-                            </button>
-                          )}
                           <button
                             onClick={() => handleOpenEditForm(t)}
                             className="p-2 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition"
@@ -662,7 +470,7 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* SEATS POPUP */}
+      {/* SEATS DETAILED POPUP FOR DIRECT MANUALLY BLOCKING SEATS */}
       {selectedTripForSeats && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
@@ -682,13 +490,14 @@ export default function AdminPanel({
             <div className="rounded-2xl border border-slate-150 bg-slate-50 p-4">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-4">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Autobús de {selectedTripForSeats.totalSeats} lugares</span>
-                <span className="text-xs font-bold text-slate-800">{selectedTripForSeats.blockedSeats?.length || 0} ocupados</span>
+                <span className="text-xs font-bold text-slate-800">{selectedTripForSeats.blockedSeats.length} ocupados</span>
               </div>
 
+              {/* Grid representation */}
               <div className="grid grid-cols-4 gap-2.5 justify-items-center">
                 {Array.from({ length: selectedTripForSeats.totalSeats }).map((_, idx) => {
                   const seatNo = idx + 1;
-                  const isBlocked = (selectedTripForSeats.blockedSeats || []).includes(seatNo);
+                  const isBlocked = selectedTripForSeats.blockedSeats.includes(seatNo);
                   return (
                     <button
                       key={seatNo}
@@ -732,12 +541,12 @@ export default function AdminPanel({
             <div className="flex items-center justify-between border-b border-slate-150 pb-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900">
-                  {editingTrip ? 'Editar Detalles del Viaje' : 'Subir Nuevo Viaje'}
+                  {editingTrip ? 'Editar Detalles del Viaje' : 'Subir Nuevo Viaje Curado'}
                 </h3>
                 <p className="text-xs text-slate-500">Registra todos los detalles para que los viajeros se sientan seguros de comprar.</p>
               </div>
               <button
-                onClick={() => setIsFormOpen(false)}
+                onClick={() => setIsIsFormOpen(false)}
                 className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:bg-slate-50"
               >
                 <X className="h-5 w-5" />
@@ -760,11 +569,11 @@ export default function AdminPanel({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Descripción</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Descripción de Venta (Persuasiva)</label>
                   <textarea
                     required
                     rows={3}
-                    placeholder="Escribe los atractivos principales..."
+                    placeholder="Escribe los atractivos principales, por qué la gente ama este destino..."
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-emerald-500 focus:outline-none"
@@ -787,7 +596,7 @@ export default function AdminPanel({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Destino Final</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Destino Final (Estado/Región)</label>
                   <input
                     type="text"
                     required
@@ -832,7 +641,7 @@ export default function AdminPanel({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Duración</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Duración (Texto breve)</label>
                   <input
                     type="text"
                     required
@@ -844,7 +653,7 @@ export default function AdminPanel({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Categoría</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Categoría de Viaje</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as Trip['category'])}
@@ -875,7 +684,7 @@ export default function AdminPanel({
               {/* Departure Point Info */}
               <div className="border-t border-slate-150 pt-5 space-y-4">
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1">
-                  <MapPin className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Punto de Salida
+                  <MapPin className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Punto de Salida en Mapas
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
@@ -890,7 +699,7 @@ export default function AdminPanel({
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Instrucciones de Abordaje</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Instrucciones de Abordaje para Pasajeros</label>
                     <input
                       type="text"
                       required
@@ -901,7 +710,7 @@ export default function AdminPanel({
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Enlace de Embed Google Maps (Opcional)</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Enlace de Embed Iframe de Google Maps (Opcional)</label>
                     <input
                       type="text"
                       placeholder="https://www.google.com/maps/embed?..."
@@ -909,6 +718,7 @@ export default function AdminPanel({
                       onChange={(e) => setFormEmbedUrl(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-emerald-500 focus:outline-none font-mono text-xs"
                     />
+                    <span className="text-[10px] text-slate-400 mt-1 block">Para mostrar el mapa interactivo de forma exacta en la ficha del viaje.</span>
                   </div>
                 </div>
               </div>
@@ -916,7 +726,7 @@ export default function AdminPanel({
               {/* Inclusions / Exclusions */}
               <div className="border-t border-slate-150 pt-5 space-y-4">
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1">
-                  <CheckCircle className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Inclusiones y Exclusiones
+                  <CheckCircle className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Inclusiones y Exclusiones (Un concepto por renglón)
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -942,12 +752,13 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Itinerary Builder */}
+              {/* Interactive Itinerary Builder */}
               <div className="border-t border-slate-150 pt-5 space-y-4">
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1">
-                  <Clock className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Itinerario
+                  <Clock className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Constructor de Itinerario
                 </h4>
                 
+                {/* List current itinerary items */}
                 <div className="space-y-2 max-h-48 overflow-y-auto rounded-xl border border-slate-150 p-3 bg-slate-50">
                   {formItinerary.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between gap-3 text-xs bg-white p-2.5 rounded-lg border border-slate-200">
@@ -969,21 +780,22 @@ export default function AdminPanel({
                   )}
                 </div>
 
+                {/* Add new itinerary item */}
                 <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Agregar Nueva Parada</span>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Día / Hora</label>
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Día / Hora exacta</label>
                       <input
                         type="text"
-                        placeholder="Ej. 08:00 AM"
+                        placeholder="Ej. 08:00 AM o Día 2 - 10:00 AM"
                         value={itTime}
                         onChange={(e) => setItTime(e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Título</label>
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Título del Evento</label>
                       <input
                         type="text"
                         placeholder="Ej. Cita en punto de encuentro"
@@ -993,7 +805,7 @@ export default function AdminPanel({
                       />
                     </div>
                     <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Descripción</label>
+                      <label className="block text-[11px] font-semibold text-slate-500 mb-0.5">Descripción a detalle</label>
                       <input
                         type="text"
                         placeholder="Ej. Estaremos abordando puntualmente el transporte."
@@ -1008,19 +820,19 @@ export default function AdminPanel({
                     onClick={handleAddItineraryItem}
                     className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800"
                   >
-                    Agregar parada
+                    Agregar parada al itinerario
                   </button>
                 </div>
               </div>
 
-              {/* Agency Info */}
+              {/* Local Agency Info (Verify agency) */}
               <div className="border-t border-slate-150 pt-5 space-y-4">
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1">
-                  <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Agencia Operadora
+                  <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 shrink-0" /> Información de Agencia Operadora
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre de Agencia</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre Comercial de Agencia</label>
                     <input
                       type="text"
                       required
@@ -1031,7 +843,7 @@ export default function AdminPanel({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">URL de Logo</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">URL de Logo / Imagen</label>
                     <input
                       type="text"
                       required
@@ -1042,7 +854,7 @@ export default function AdminPanel({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">WhatsApp de Ventas</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">WhatsApp de Ventas de Agencia</label>
                     <input
                       type="tel"
                       required
@@ -1059,7 +871,7 @@ export default function AdminPanel({
               <div className="flex items-center justify-end gap-3.5 border-t border-slate-150 pt-5">
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={() => setIsIsFormOpen(false)}
                   className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
                 >
                   Cancelar
@@ -1069,7 +881,7 @@ export default function AdminPanel({
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-700"
                 >
                   <Save className="h-4.5 w-4.5" />
-                  {editingTrip ? 'Guardar Cambios' : 'Publicar Viaje'}
+                  {editingTrip ? 'Guardar Cambios' : 'Publicar Viaje en Catálogo'}
                 </button>
               </div>
             </form>
