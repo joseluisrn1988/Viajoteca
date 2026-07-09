@@ -136,3 +136,33 @@ CREATE POLICY "Users can create bookings" ON bookings FOR INSERT WITH CHECK (aut
 -- Reviews: anyone can read, booking owners can create
 CREATE POLICY "Reviews viewable" ON reviews FOR SELECT USING (true);
 CREATE POLICY "Booking owners can review" ON reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- ============================================
+-- POLÍTICAS DE ADMINISTRADOR
+-- Permiten a usuarios con role='admin' aprobar viajes, verificar agencias, etc.
+-- ============================================
+
+-- Admin puede actualizar cualquier viaje (aprobar/rechazar)
+CREATE POLICY "Admins can update trips" ON trips FOR UPDATE
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin')
+WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+
+-- Admin puede actualizar cualquier agencia (verificar)
+CREATE POLICY "Admins can update agencies" ON agencies FOR UPDATE
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin')
+WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+
+-- Admin puede ver todas las reservas
+CREATE POLICY "Admins can see all bookings" ON bookings FOR SELECT
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+
+-- Admin puede ver todas las reseñas
+CREATE POLICY "Admins can see all reviews" ON reviews FOR SELECT
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+
+-- Admin puede eliminar cualquier viaje o agencia (moderación)
+CREATE POLICY "Admins can delete trips" ON trips FOR DELETE
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+
+CREATE POLICY "Admins can delete agencies" ON agencies FOR DELETE
+USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
