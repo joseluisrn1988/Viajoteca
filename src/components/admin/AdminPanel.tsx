@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trip, ItineraryItem } from '../../types/travel';
+import { Trip, ItineraryItem } from '../../types';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Plus,
@@ -83,7 +83,6 @@ export default function AdminPanel({
   // Sync trips when props change
   useEffect(() => {
     setTrips(initialTrips);
-    // Filter pending trips (is_approved = false)
     const pending = initialTrips.filter(t => t.is_approved === false);
     setPendingTrips(pending);
   }, [initialTrips]);
@@ -95,38 +94,28 @@ export default function AdminPanel({
   const totalBookedSeats = trips.reduce((acc, t) => acc + (t.blockedSeats?.length || 0), 0);
   const totalCapacity = trips.reduce((acc, t) => acc + (t.totalSeats || 0), 0);
 
-  // ✅ FUNCIÓN CORREGIDA PARA APROBAR VIAJES
+  // ✅ FUNCIÓN PARA APROBAR VIAJES
   const handleApproveTrip = async (tripId: string) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !supabase) {
       toast.error('❌ Supabase no está configurado');
       return;
     }
 
     setIsLoading(true);
     try {
-      // 1. Actualizar en Supabase
-if (!supabase) {
-  alert('❌ Supabase no está configurado');
-  return;
-}
-
-const { error } = await supabase
-  .from('trips')
-  .update({ is_approved: true })
-  .eq('id', tripId);
+      const { error } = await supabase!
+        .from('trips')
+        .update({ is_approved: true })
+        .eq('id', tripId);
 
       if (error) throw error;
 
-      // 2. Actualizar el estado local
       const updatedTrips = trips.map(trip =>
         trip.id === tripId ? { ...trip, is_approved: true } : trip
       );
       setTrips(updatedTrips);
-      
-      // 3. Actualizar la lista de pendientes
       setPendingTrips(prev => prev.filter(t => t.id !== tripId));
 
-      // 4. Notificar al padre
       const approvedTrip = trips.find(t => t.id === tripId);
       if (approvedTrip) {
         onUpdateTrip({ ...approvedTrip, is_approved: true });
@@ -141,9 +130,9 @@ const { error } = await supabase
     }
   };
 
-  // ✅ FUNCIÓN PARA RECHAZAR VIAJES (opcional)
+  // ✅ FUNCIÓN PARA RECHAZAR VIAJES
   const handleRejectTrip = async (tripId: string) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !supabase) {
       toast.error('❌ Supabase no está configurado');
       return;
     }
@@ -154,7 +143,7 @@ const { error } = await supabase
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await supabase!
         .from('trips')
         .update({ status: 'rejected' })
         .eq('id', tripId);
@@ -245,6 +234,7 @@ const { error } = await supabase
       ? formImages.split(',').map((img) => img.trim())
       : ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'];
 
+    // 🔧 CORRECCIÓN: Aseguramos que agency cumpla con la interfaz Agency
     const newTrip: Trip = {
       id: editingTrip ? editingTrip.id : `trip-${Date.now()}`,
       title: formTitle,
@@ -268,12 +258,14 @@ const { error } = await supabase
       whatsNotIncluded: formWhatsNotIncluded.split('\n').filter((item) => item.trim() !== ''),
       itinerary: formItinerary,
       agency: {
+        id: editingTrip?.agency?.id || `agency-${Date.now()}`,  // ← AÑADIDO
         name: formAgencyName,
         logo: formAgencyLogo,
         rating: 4.9,
         totalTrips: 10,
         isVerified: true,
         phone: formAgencyPhone,
+        reviews: editingTrip?.agency?.reviews || [],            // ← AÑADIDO
       },
       totalSeats: editingTrip ? editingTrip.totalSeats : 40,
       blockedSeats: editingTrip ? editingTrip.blockedSeats : [],
@@ -307,8 +299,6 @@ const { error } = await supabase
 
     const updatedTrip = { ...trip, blockedSeats: updatedBlocked };
     onUpdateTrip(updatedTrip);
-    
-    // Update local state
     setTrips(prev => prev.map(t => t.id === tripId ? updatedTrip : t));
     
     if (selectedTripForSeats?.id === tripId) {
@@ -316,6 +306,9 @@ const { error } = await supabase
     }
   };
 
+  // ============================================
+  // JSX RENDER (completo)
+  // ============================================
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header and Controls */}
@@ -482,7 +475,6 @@ const { error } = await supabase
             </div>
           </div>
 
-          {/* Mini-table of detailed passenger tracking */}
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -670,7 +662,7 @@ const { error } = await supabase
         </div>
       )}
 
-      {/* SEATS DETAILED POPUP FOR DIRECT MANUALLY BLOCKING SEATS */}
+      {/* SEATS POPUP */}
       {selectedTripForSeats && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
