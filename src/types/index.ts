@@ -26,7 +26,7 @@ export interface Trip {
   agency_id: string;
   title: string;
   description: string | null;
-  departure_city: string;
+  departure_city: string; // Texto libre, coincide con cualquier municipio
   destination: string;
   departure_date: string;
   return_date: string;
@@ -98,4 +98,58 @@ export const VEHICLE_SUGGESTIONS: Record<number, string> = {
 
 export const TRIP_CATEGORIES = ['Playa', 'Naturaleza', 'Pueblo Mágico', 'Aventura', 'Cultural', 'Fin de Semana'] as const;
 
-export const DEPARTURE_CITIES = ['CDMX', 'Guadalajara', 'Monterrey', 'Querétaro', 'Puebla', 'León', 'Mérida', 'Cancún'] as const;
+// ==========================================
+// MUNICIPIOS DE SALIDA DISPONIBLES
+// Lista completa de municipios de Guanajuato
+// El campo departure_city es texto libre (no restrictivo),
+// por lo que el viaje puede usar cualquiera de estos o incluso otros.
+// Agencias pueden agregar su propio municipio al crear el viaje,
+// siempre y cuando un viajero filtra, la búsqueda también trabaja
+// sobre esta lista para mostrar las opciones principales.
+// ==========================================
+export const DEPARTURE_CITIES = [
+  'Abasolo',
+  'Acámbaro',
+  'Apaseo el Alto',
+  'Apaseo el Bajo',
+  'Atarjea',
+  'Celaya',
+  'Comonfort',
+  'Coroneo',
+  'Cortazar',
+  'Cuerámaro',
+  'Doctor Mora',
+  'Dolores Hidalgo',
+  'Guanajuato',
+  'Huanímaro',
+  'Irapuato',
+  'Jaral del Progreso',
+  'Jerécuaro',
+  'León',
+  'Manuel Doblado',
+  'Moroleón',
+  'Ocampo',
+  'Pénjamo',
+  'Purísima del Rincón',
+  'Romita',
+  'Salamanca',
+  'Salvatierra',
+  'San Diego de la Unión',
+  'San Felipe',
+  'San Francisco del Rincón',
+  'San José Iturbide',
+  'San Luis de la Paz',
+  'Santa Catarina',
+  'Santa Cruz de Juventino Rosas',
+  'Santiago Maravatío',
+  'Silao',
+  'Tarandacuao',
+  'Tarimoro',
+  'Tierra Blanca',
+  'Uriangato',
+  'Valle de Santiago',
+  'Victoria',
+  'Villagrán',
+  'Xichú',
+  'Yuriria'
+] as const;
