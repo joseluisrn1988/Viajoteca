@@ -74,7 +74,7 @@ export default function TripForm() {
           <h3 className="font-bold text-slate-900">Información General</h3>
           <div><label className={lbl}>Título del Viaje</label><input type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="Ej. Grutas de Tolantongo" /></div>
           <div><label className={lbl}>Descripción</label><textarea required rows={3} value={description} onChange={e => setDescription(e.target.value)} className={inp} placeholder="Describe tu viaje de forma atractiva..." /></div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <div><label className={lbl}>Ciudad de Salida</label><select value={departureCity} onChange={e => setDepartureCity(e.target.value)} className={inp}>{DEPARTURE_CITIES.map(c => <option key={c}>{c}</option>)}</select></div>
             <div><label className={lbl}>Destino</label><input type="text" required value={destination} onChange={e => setDestination(e.target.value)} className={inp} placeholder="Ej. Hidalgo" /></div>
             <div><label className={lbl}>Fecha de Salida</label><input type="date" required value={departureDate} onChange={e => setDepartureDate(e.target.value)} className={inp} /></div>
