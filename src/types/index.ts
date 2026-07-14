@@ -53,6 +53,9 @@ export interface Trip {
   itinerary_items?: ItineraryItem[];
 }
 
+// Las URLs representan imágenes ya guardadas; los File son imágenes pendientes de subir.
+export type TripImageInput = string | File;
+
 export interface ItineraryItem {
   id?: string;
   trip_id?: string;

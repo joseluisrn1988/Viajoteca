@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTrips } from '../../contexts/TripContext';
-import { TRIP_CATEGORIES, DEPARTURE_CITIES, type ItineraryItem } from '../../types';
+import { TRIP_CATEGORIES, DEPARTURE_CITIES, type ItineraryItem, type TripImageInput } from '../../types';
 import SeatSelectorConfig from '../shared/SeatSelectorConfig';
+import ImageUpload from '../shared/ImageUpload';
 import { Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,14 +15,14 @@ export default function TripForm() {
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [departureCity, setDepartureCity] = useState('CDMX');
+  const [departureCity, setDepartureCity] = useState<string>(DEPARTURE_CITIES[0]);
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [price, setPrice] = useState(0);
   const [category, setCategory] = useState<string>('Naturaleza');
   const [durationText, setDurationText] = useState('1 Día');
-  const [images, setImages] = useState('');
+  const [images, setImages] = useState<TripImageInput[]>([]);
   const [totalSeats, setTotalSeats] = useState(40);
   const [vehicleType, setVehicleType] = useState('Autobús de Turismo');
   const [address, setAddress] = useState('');
@@ -45,18 +46,18 @@ export default function TripForm() {
     e.preventDefault();
     if (!agency) { toast.error('No se encontró tu agencia'); return; }
     setBusy(true);
-    const imageList = images ? images.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const existingImageUrls = images.filter((image): image is string => typeof image === 'string');
     const result = await createTrip({
       agency_id: agency.id, title, description, departure_city: departureCity, destination,
       departure_date: departureDate, return_date: returnDate, price: Number(price), currency: 'MXN',
-      images: imageList, category, duration_text: durationText, vehicle_type: vehicleType,
+      images: existingImageUrls, category, duration_text: durationText, vehicle_type: vehicleType,
       total_seats: totalSeats, blocked_seats: [],
       departure_address: address, departure_instructions: instructions,
       departure_lat: null, departure_lng: null, departure_embed_url: embedUrl || null,
       whats_included: included.split('\n').filter(Boolean),
       whats_not_included: notIncluded.split('\n').filter(Boolean),
       whatsapp_number: whatsapp, is_approved: false, status: 'active',
-    }, itinerary);
+    }, itinerary, images);
     setBusy(false);
     if (result) nav('/agency');
   };
@@ -74,7 +75,7 @@ export default function TripForm() {
           <h3 className="font-bold text-slate-900">Información General</h3>
           <div><label className={lbl}>Título del Viaje</label><input type="text" required value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="Ej. Grutas de Tolantongo" /></div>
           <div><label className={lbl}>Descripción</label><textarea required rows={3} value={description} onChange={e => setDescription(e.target.value)} className={inp} placeholder="Describe tu viaje de forma atractiva..." /></div>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div><label className={lbl}>Ciudad de Salida</label><select value={departureCity} onChange={e => setDepartureCity(e.target.value)} className={inp}>{DEPARTURE_CITIES.map(c => <option key={c}>{c}</option>)}</select></div>
             <div><label className={lbl}>Destino</label><input type="text" required value={destination} onChange={e => setDestination(e.target.value)} className={inp} placeholder="Ej. Hidalgo" /></div>
             <div><label className={lbl}>Fecha de Salida</label><input type="date" required value={departureDate} onChange={e => setDepartureDate(e.target.value)} className={inp} /></div>
@@ -84,7 +85,7 @@ export default function TripForm() {
             <div><label className={lbl}>Categoría</label><select value={category} onChange={e => setCategory(e.target.value)} className={inp}>{TRIP_CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
             <div><label className={lbl}>WhatsApp de Ventas</label><input type="tel" required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} className={inp} placeholder="525512345678" /></div>
           </div>
-          <div><label className={lbl}>URLs de Imágenes (separadas por coma)</label><input type="text" value={images} onChange={e => setImages(e.target.value)} className={inp} placeholder="https://img1.jpg, https://img2.jpg" /></div>
+          <ImageUpload value={images} onChange={setImages} disabled={busy} />
         </section>
 
         {/* Seat Configuration */}
@@ -139,5 +140,3 @@ export default function TripForm() {
     </div>
   );
 }
- 
- 
