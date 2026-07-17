@@ -101,16 +101,92 @@ export default function TripDetail({ trip }: { trip: Trip }) {
                 <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm"><h4 className="flex items-center gap-2 text-base font-bold text-slate-900"><XCircle className="h-5 w-5 text-rose-500" />No incluido</h4><ul className="mt-4 space-y-2">{trip.whats_not_included.map((item, i) => <li key={i} className="flex gap-2.5 text-sm text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-2 shrink-0" />{item}</li>)}</ul></div>
               )}
             </div>
-            {/* Map */}
-            {trip.departure_address && (
+            {/* Pickup Points */}
+            {(trip.pickup_points && trip.pickup_points.length > 0) || trip.departure_address ? (
               <div className="rounded-3xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm space-y-6">
-                <h3 className="text-lg font-bold text-slate-900">Punto de Salida</h3>
-                <div className="rounded-2xl border border-slate-150 bg-slate-50 p-4 flex gap-4 text-sm text-slate-600"><MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" /><div><strong>{trip.departure_address}</strong></div></div>
-                {trip.departure_instructions && <div className="rounded-2xl border border-slate-150 bg-slate-50 p-4 flex gap-4 text-sm text-slate-600"><Info className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" /><div>{trip.departure_instructions}</div></div>}
-                {trip.departure_embed_url && <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200"><iframe title="Mapa" src={trip.departure_embed_url} width="100%" height="100%" style={{ border: 0 }} loading="lazy" /></div>}
-                {trip.departure_lat && trip.departure_lng && <a href={`https://www.google.com/maps/search/?api=1&query=${trip.departure_lat},${trip.departure_lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline">Abrir en Google Maps <ExternalLink className="h-3.5 w-3.5" /></a>}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900">Puntos de Salida / Recogida</h3>
+                  {(trip.pickup_points?.length || 0) > 1 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{trip.pickup_points?.length} ubicaciones</span>}
+                </div>
+
+                {/* Pickup point selector if multiple */}
+                <div>
+                  {trip.pickup_points && trip.pickup_points.length > 0 ? (
+                    <div className="space-y-6">
+                      {trip.pickup_points.length > 1 && (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                          {trip.pickup_points.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                const el = document.getElementById(`pickup-${i}`);
+                                el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                              }}
+                              className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                            >
+                              Punto {i + 1}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="space-y-12 divide-y divide-slate-100">
+                        {trip.pickup_points.map((pp, idx) => (
+                          <div key={pp.id || idx} id={`pickup-${idx}`} className={idx > 0 ? "pt-10" : ""}>
+                            <div className="flex flex-col gap-4">
+                              <div className="flex items-start gap-4">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-black text-emerald-600 border border-emerald-100 shadow-sm">{idx + 1}</div>
+                                <div className="space-y-4 flex-1">
+                                  <div>
+                                    <strong className="text-base text-slate-900 block font-black leading-tight">{pp.address}</strong>
+                                    {pp.instructions && (
+                                      <div className="mt-2.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                                        <p className="text-xs text-slate-600 leading-relaxed flex items-start gap-2">
+                                          <Info className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                          {pp.instructions}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {pp.embed_url && (
+                                    <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+                                      <iframe title={`Mapa punto ${idx + 1}`} src={pp.embed_url} width="100%" height="100%" style={{ border: 0 }} loading="lazy" />
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex justify-end">
+                                    <a 
+                                      href={pp.lat && pp.lng 
+                                        ? `https://www.google.com/maps/search/?api=1&query=${pp.lat},${pp.lng}`
+                                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pp.address)}`
+                                      } 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+                                    >
+                                      Ver en Google Maps <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback for legacy trips */
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-slate-150 bg-slate-50 p-4 flex gap-4 text-sm text-slate-600"><MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" /><div><strong>{trip.departure_address}</strong></div></div>
+                      {trip.departure_instructions && <div className="rounded-2xl border border-slate-150 bg-slate-50 p-4 flex gap-4 text-sm text-slate-600"><Info className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" /><div>{trip.departure_instructions}</div></div>}
+                      {trip.departure_embed_url && <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200"><iframe title="Mapa" src={trip.departure_embed_url} width="100%" height="100%" style={{ border: 0 }} loading="lazy" /></div>}
+                      {trip.departure_lat && trip.departure_lng && <a href={`https://www.google.com/maps/search/?api=1&query=${trip.departure_lat},${trip.departure_lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline">Abrir en Google Maps <ExternalLink className="h-3.5 w-3.5" /></a>}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
             {/* Agency info */}
             {trip.agency && (
               <div className="rounded-3xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">

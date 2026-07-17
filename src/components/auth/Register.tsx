@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Compass, Building2, Backpack } from 'lucide-react';
+import { UserPlus, Compass, Building2, Backpack, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Register() {
   const { signUp } = useAuth();
@@ -17,6 +18,17 @@ export default function Register() {
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (role === 'agency' && !agencyName.trim()) {
+      toast.error('El nombre de la agencia es obligatorio');
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
     setBusy(true);
     const ok = await signUp(email, password, fullName, phone, role, agencyName, whatsapp);
     setBusy(false);
@@ -76,8 +88,9 @@ export default function Register() {
             </div>
           )}
 
-          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-700 disabled:opacity-50">
-            <UserPlus className="h-4 w-4" />{busy ? 'Creando...' : 'Crear Cuenta'}
+          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            {busy ? 'Creando...' : 'Crear Cuenta'}
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-slate-500">¿Ya tienes cuenta? <Link to="/login" className="font-bold text-emerald-600 hover:underline">Inicia sesión</Link></p>

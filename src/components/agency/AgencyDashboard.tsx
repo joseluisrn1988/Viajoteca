@@ -89,30 +89,38 @@ export default function AgencyDashboard() {
       </div>
 
       {/* Recent Bookings */}
-      {bookings.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-black text-slate-900 mb-4">Reservas Recientes</h3>
+      <div className="mt-8">
+        <h3 className="text-lg font-black text-slate-900 mb-4">Reservas Recientes</h3>
+        {bookings.length > 0 ? (
           <div className="space-y-3">{bookings.slice(0, 10).map(b => (
             <div key={b.id} className="rounded-xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
               <div><p className="text-sm font-bold text-slate-800">{b.contact_name}</p><p className="text-xs text-slate-500">Asientos: {b.selected_seats.join(', ')} • ${currency(b.total_price)} MXN</p></div>
               <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{b.status}</span>
             </div>
           ))}</div>
-        </div>
-      )}
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-white/50">
+            <p className="text-sm text-slate-400 font-medium">Aún no tienes reservaciones registradas.</p>
+          </div>
+        )}
+      </div>
 
       {/* Reviews */}
-      {reviews.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-black text-slate-900 mb-4">Reseñas de Viajeros</h3>
+      <div className="mt-8">
+        <h3 className="text-lg font-black text-slate-900 mb-4">Reseñas de Viajeros</h3>
+        {reviews.length > 0 ? (
           <div className="space-y-3">{reviews.map(r => (
             <div key={r.id} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2"><span className="text-amber-500 font-bold">{'⭐'.repeat(r.rating)}</span><span className="text-xs text-slate-400">{formatDate(r.created_at)}</span></div>
               {r.comment && <p className="mt-2 text-sm text-slate-600">{r.comment}</p>}
             </div>
           ))}</div>
-        </div>
-      )}
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-white/50">
+            <p className="text-sm text-slate-400 font-medium">Aún no has recibido reseñas de viajeros.</p>
+          </div>
+        )}
+      </div>
 
       {/* Seat Management Modal */}
       {seatTrip && (

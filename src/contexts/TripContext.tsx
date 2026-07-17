@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { supabase, isSupabaseConfigured, TRIP_IMAGES_BUCKET } from '../lib/supabase';
-import type { Trip, Booking, Review, Agency, ItineraryItem, TripImageInput } from '../types';
+import type { Trip, Booking, Review, Agency, ItineraryItem, TripImageInput, PickupPoint } from '../types';
 import toast from 'react-hot-toast';
 
 const ADMIN_PASSWORD = 'Grupo2026*adn';
@@ -11,8 +11,8 @@ interface TripCtx {
   fetchTrips: () => Promise<void>;
   fetchTripById: (id: string) => Promise<Trip | null>;
   fetchAgencyTrips: (agencyId: string) => Promise<Trip[]>;
-  createTrip: (d: Omit<Trip, 'id' | 'created_at' | 'agency'>, items: ItineraryItem[], imageInputs?: TripImageInput[]) => Promise<Trip | null>;
-  updateTrip: (id: string, d: Partial<Trip>, items?: ItineraryItem[]) => Promise<boolean>;
+  createTrip: (d: Omit<Trip, 'id' | 'created_at' | 'agency'>, items: ItineraryItem[], imageInputs?: TripImageInput[], pickupPoints?: PickupPoint[]) => Promise<Trip | null>;
+  updateTrip: (id: string, d: Partial<Trip>, items?: ItineraryItem[], pickupPoints?: PickupPoint[]) => Promise<boolean>;
   deleteTrip: (id: string) => Promise<boolean>;
   toggleSeat: (tripId: string, seat: number) => Promise<boolean>;
   createBooking: (b: Omit<Booking, 'id' | 'created_at' | 'trip'>) => Promise<Booking | null>;
@@ -83,26 +83,26 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const fetchTrips = async () => {
     if (!isSupabaseConfigured || !supabase) return;
     setLoading(true);
-    const { data } = await supabase.from('trips').select('*, agency:agencies(*)').eq('is_approved', true).eq('status', 'active').order('departure_date');
+    const { data } = await supabase.from('trips').select('*, agency:agencies(*), pickup_points:trip_pickup_points(*)').eq('is_approved', true).eq('status', 'active').order('departure_date');
     if (data) setTrips(data as Trip[]);
     setLoading(false);
   };
 
   const fetchTripById = async (id: string): Promise<Trip | null> => {
     if (!isSupabaseConfigured || !supabase) return null;
-    const { data: trip } = await supabase.from('trips').select('*, agency:agencies(*)').eq('id', id).single();
+    const { data: trip } = await supabase.from('trips').select('*, agency:agencies(*), pickup_points:trip_pickup_points(*)').eq('id', id).single();
     if (!trip) return null;
     const { data: items } = await supabase.from('itinerary_items').select('*').eq('trip_id', id).order('sort_order');
-    return { ...trip, itinerary_items: items || [] } as Trip;
+    return { ...trip, itinerary_items: items || [], pickup_points: trip.pickup_points || [] } as Trip;
   };
 
   const fetchAgencyTrips = async (agencyId: string): Promise<Trip[]> => {
     if (!isSupabaseConfigured || !supabase) return [];
-    const { data } = await supabase.from('trips').select('*').eq('agency_id', agencyId).order('departure_date', { ascending: false });
+    const { data } = await supabase.from('trips').select('*, pickup_points:trip_pickup_points(*)').eq('agency_id', agencyId).order('departure_date', { ascending: false });
     return (data || []) as Trip[];
   };
 
-  const createTrip = async (d: Omit<Trip, 'id' | 'created_at' | 'agency'>, items: ItineraryItem[] = [], imageInputs: TripImageInput[] = d.images): Promise<Trip | null> => {
+  const createTrip = async (d: Omit<Trip, 'id' | 'created_at' | 'agency'>, items: ItineraryItem[] = [], imageInputs: TripImageInput[] = d.images, pickupPoints: PickupPoint[] = []): Promise<Trip | null> => {
     if (!isSupabaseConfigured || !supabase) return null;
     const { data, error } = await supabase.from('trips').insert(d).select().single();
     if (error || !data) { toast.error(error?.message || 'Error'); return null; }
@@ -123,14 +123,20 @@ export function TripProvider({ children }: { children: ReactNode }) {
       const toInsert = items.map((it, i) => ({ trip_id: data.id, time_or_day: it.time_or_day, title: it.title, description: it.description, sort_order: i }));
       await supabase.from('itinerary_items').insert(toInsert);
     }
+
+    if (pickupPoints.length > 0) {
+      const pps = pickupPoints.map((p, i) => ({ ...p, trip_id: data.id, sort_order: i }));
+      await supabase.from('trip_pickup_points').insert(pps);
+    }
+
     toast.success('Viaje creado exitosamente');
     return (updatedTrip || data) as Trip;
   };
 
-  const updateTrip = async (id: string, d: Partial<Trip>, items?: ItineraryItem[]): Promise<boolean> => {
+  const updateTrip = async (id: string, d: Partial<Trip>, items?: ItineraryItem[], pickupPoints?: PickupPoint[]): Promise<boolean> => {
     if (!isSupabaseConfigured || !supabase) return false;
     const cleanD = { ...d };
-    delete cleanD.agency; delete cleanD.itinerary_items;
+    delete cleanD.agency; delete cleanD.itinerary_items; delete cleanD.pickup_points;
     const { error } = await supabase.from('trips').update(cleanD).eq('id', id);
     if (error) { toast.error(error.message); return false; }
     if (items) {
@@ -138,6 +144,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
       if (items.length > 0) {
         const toInsert = items.map((it, i) => ({ trip_id: id, time_or_day: it.time_or_day, title: it.title, description: it.description, sort_order: i }));
         await supabase.from('itinerary_items').insert(toInsert);
+      }
+    }
+    if (pickupPoints) {
+      await supabase.from('trip_pickup_points').delete().eq('trip_id', id);
+      if (pickupPoints.length > 0) {
+        const pps = pickupPoints.map((p, i) => ({ ...p, trip_id: id, sort_order: i }));
+        await supabase.from('trip_pickup_points').insert(pps);
       }
     }
     toast.success('Viaje actualizado');

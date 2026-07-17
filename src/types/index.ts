@@ -21,6 +21,17 @@ export interface Agency {
   created_at: string;
 }
 
+export interface PickupPoint {
+  id?: string;
+  trip_id?: string;
+  address: string;
+  instructions: string | null;
+  lat: number | null;
+  lng: number | null;
+  embed_url: string | null;
+  sort_order: number;
+}
+
 export interface Trip {
   id: string;
   agency_id: string;
@@ -38,11 +49,11 @@ export interface Trip {
   vehicle_type: string;
   total_seats: number;
   blocked_seats: number[];
-  departure_address: string | null;
-  departure_instructions: string | null;
-  departure_lat: number | null;
-  departure_lng: number | null;
-  departure_embed_url: string | null;
+  departure_address?: string | null;      // Obsoleto
+  departure_instructions?: string | null; // Obsoleto
+  departure_lat?: number | null;          // Obsoleto
+  departure_lng?: number | null;          // Obsoleto
+  departure_embed_url?: string | null;    // Obsoleto
   whats_included: string[];
   whats_not_included: string[];
   whatsapp_number: string | null;
@@ -51,6 +62,7 @@ export interface Trip {
   created_at: string;
   agency?: Agency;
   itinerary_items?: ItineraryItem[];
+  pickup_points?: PickupPoint[];
 }
 
 // Las URLs representan imágenes ya guardadas; los File son imágenes pendientes de subir.
