@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Profile, Agency } from '../types';
-import type { User } from '@supabase/supabase-js';
+import type { User, Provider } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
 
 interface AuthCtx {
@@ -11,6 +11,7 @@ interface AuthCtx {
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string, role: 'traveler' | 'agency', agencyName?: string, whatsapp?: string) => Promise<boolean>;
   signIn: (email: string, password: string) => Promise<boolean>;
+  signInWithOAuth: (provider: 'google' | 'facebook') => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -23,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [agency, setAgency] = useState<Agency | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = async (uid: string) => {
+  const loadProfile = async (uid: string, email?: string) => {
     if (!supabase) return;
     const { data: p } = await supabase.from('profiles').select('*').eq('id', uid).single();
     if (p) {
@@ -32,19 +33,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: a } = await supabase.from('agencies').select('*').eq('user_id', uid).single();
         if (a) setAgency(a);
       }
+    } else if (email) {
+      // First time OAuth login: create traveler profile automatically
+      const newProfile: Profile = {
+        id: uid,
+        email,
+        full_name: null,
+        phone: null,
+        role: 'traveler',
+        created_at: new Date().toISOString(),
+      };
+      await supabase.from('profiles').insert(newProfile);
+      setProfile(newProfile);
     }
   };
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); loadProfile(session.user.id); }
+      if (session?.user) {
+        setUser(session.user);
+        loadProfile(session.user.id, session.user.email);
+      }
       setLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) loadProfile(u.id); else { setProfile(null); setAgency(null); }
+      if (u) loadProfile(u.id, u.email); else { setProfile(null); setAgency(null); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -69,6 +85,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const signInWithOAuth = async (provider: 'google' | 'facebook') => {
+    if (!isSupabaseConfigured || !supabase) { toast.error('Supabase no configurado'); return; }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: window.location.origin + window.location.pathname,
+      },
+    });
+    if (error) toast.error(error.message);
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -76,5 +103,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success('Sesión cerrada');
   };
 
-  return <AuthContext.Provider value={{ user, profile, agency, loading, signUp, signIn, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, profile, agency, loading, signUp, signIn, signInWithOAuth, signOut }}>{children}</AuthContext.Provider>;
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Compass, Building2, Backpack, Loader2 } from 'lucide-react';
+import { UserPlus, Compass, Building2, Backpack } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SocialLoginButtons from './SocialLoginButtons';
 
 export default function Register() {
   const { signUp } = useAuth();
@@ -18,17 +19,8 @@ export default function Register() {
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (role === 'agency' && !agencyName.trim()) {
-      toast.error('El nombre de la agencia es obligatorio');
-      return;
-    }
-    
-    if (password.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
+    if (password.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres.'); return; }
+    if (role === 'agency' && !agencyName.trim()) { toast.error('El nombre de la agencia es obligatorio.'); return; }
     setBusy(true);
     const ok = await signUp(email, password, fullName, phone, role, agencyName, whatsapp);
     setBusy(false);
@@ -42,6 +34,12 @@ export default function Register() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 shadow-lg"><Compass className="h-7 w-7 text-white" /></div>
           <h2 className="mt-5 text-2xl font-black text-slate-900">Crear Cuenta</h2>
           <p className="mt-1 text-sm text-slate-500">Únete a Viajoteca</p>
+        </div>
+
+        {/* Social Login (creates traveler account by default) */}
+        <div className="mt-6">
+          <SocialLoginButtons />
+          <p className="mt-3 text-center text-[10px] text-slate-400">Al usar Google o Facebook se crea una cuenta de viajero automáticamente.</p>
         </div>
 
         {/* Role Selector */}
@@ -88,9 +86,8 @@ export default function Register() {
             </div>
           )}
 
-          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-            {busy ? 'Creando...' : 'Crear Cuenta'}
+          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-700 disabled:opacity-50">
+            <UserPlus className="h-4 w-4" />{busy ? 'Creando...' : 'Crear Cuenta con correo'}
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-slate-500">¿Ya tienes cuenta? <Link to="/login" className="font-bold text-emerald-600 hover:underline">Inicia sesión</Link></p>
